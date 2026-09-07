@@ -18,7 +18,7 @@ class StudyPackPipeline:
     def __init__(self, api_key: str):
         self.client = genai.Client(api_key=api_key)
         # Using supported active models for primary and fallback attempts
-        self.model_candidates = ["gemini-2.5-pro", "gemini-1.5-flash"]
+        self.model_candidates = ["gemini-3.8-flash"]
 
     def _call_with_retry(self, **kwargs):
         """
