@@ -32,7 +32,7 @@ class StudyPackPipeline:
 
     def __init__(self, api_key: str):
         self.client = genai.Client(api_key=api_key)
-        self.model = "gemini-1.5-flash"
+        self.model = "gemini-3.6-flash"
 
     def _call_with_retry(self, **kwargs):
         """Helper method to handle temporary 503 high-demand errors with retries."""
