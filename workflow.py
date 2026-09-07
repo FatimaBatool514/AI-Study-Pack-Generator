@@ -2,7 +2,6 @@ import json
 import time
 from google import genai
 from google.genai import types
-from google.genai.errors import APIError
 from pydantic import BaseModel, Field
 
 class StudyPlan(BaseModel):
@@ -18,35 +17,30 @@ class ReviewVerdict(BaseModel):
 class StudyPackPipeline:
     def __init__(self, api_key: str):
         self.client = genai.Client(api_key=api_key)
-        # Primary and fallback models for high-traffic spikes
-        self.primary_model = "gemini-2.5-flash"
-        self.fallback_model = "gemini-2.5-pro"
+        # Using supported active models for primary and fallback attempts
+        self.model_candidates = ["gemini-2.5-pro", "gemini-1.5-flash"]
 
     def _call_with_retry(self, **kwargs):
         """
-        Executes API calls with automatic exponential backoff retries.
-        Falls back to an alternative model if 503 errors persist.
+        Executes API calls across active model endpoints with exponential backoff.
         """
-        max_retries = 3
-        backoff_delay = 2  # Delay in seconds
-
-        # Try primary model first, then fallback model
-        for current_model in [self.primary_model, self.fallback_model]:
-            kwargs["model"] = current_model
-            for attempt in range(max_retries):
+        max_retries_per_model = 2
+        
+        for model_name in self.model_candidates:
+            kwargs["model"] = model_name
+            for attempt in range(max_retries_per_model):
                 try:
                     return self.client.models.generate_content(**kwargs)
-                except APIError as err:
-                    if getattr(err, "code", None) == 503 or "503" in str(err):
-                        if attempt < max_retries - 1:
-                            time.sleep(backoff_delay * (2 ** attempt))
-                            continue
-                    # If retries fail on primary model, break loop to switch to fallback
-                    break
                 except Exception as err:
-                    raise err
-
-        # Final attempt fallback trigger
+                    # If 503 or unavailable, pause and retry
+                    if "503" in str(err) or "UNAVAILABLE" in str(err):
+                        time.sleep(2 * (attempt + 1))
+                        continue
+                    # For non-503 errors on this model, break out to try the fallback model
+                    break
+        
+        # Final fallback call if all retries fail
+        kwargs["model"] = self.model_candidates[-1]
         return self.client.models.generate_content(**kwargs)
 
     def stage_plan(self, topic: str, goal: str, prompts: dict) -> StudyPlan:
