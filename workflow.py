@@ -16,7 +16,7 @@ class ReviewVerdict(BaseModel):
 class StudyPackPipeline:
     def __init__(self, api_key: str):
         self.client = genai.Client(api_key=api_key)
-        self.model = "gemini-2.5-flash"
+        self.model = "gemini-3.6-flash"
 
     def stage_plan(self, topic: str, goal: str, prompts: dict) -> StudyPlan:
         """Stage 1: Planning - Generates structured curriculum blueprint using Pydantic schema."""
